@@ -18,8 +18,20 @@ const ProductSchema = new mongoose.Schema(
     stock: {
       type: Number,
       required: true,
+      default: 0, // موجودی پیش‌فرض 0 باشد
     },
     description: String,
+    // فیلدهای جدید اضافه شده:
+    price: {
+      type: Number,
+      required: true,
+      min: 0, // قیمت نمی‌تواند منفی باشد
+    },
+    category: {
+      type: String,
+      required: true, // دسته‌بندی الزامی است
+      trim: true, // فاصله اضافی را حذف می‌کند
+    },
   },
   { timestamps: true }
 );

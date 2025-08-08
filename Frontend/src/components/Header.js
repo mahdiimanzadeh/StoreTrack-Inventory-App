@@ -1,18 +1,20 @@
+// src/components/Header.js
 import { Fragment, useContext } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import AuthContext from "../AuthContext";
 import { Link } from "react-router-dom";
 
+// Navigation links translation
 const navigation = [
-  { name: "Dashboard", href: "/", current: true },
-  { name: "Inventory", href: "/inventory", current: false },
-  { name: "Purchase Details", href: "/purchase-details", current: false },
-  { name: "Sales", href: "/sales", current: false },
-  { name: "Manage Store", href: "/manage-store", current: false },
+  { name: "داشبورد", href: "/", current: true },
+  { name: "موجودی کالا", href: "/inventory", current: false },
+  { name: "جزئیات خرید", href: "/purchase-details", current: false }, // This will change to transaction history
+  { name: "فروش و سفارشات", href: "/sales", current: false }, // This will change to order list
+  { name: "مدیریت فروشگاه", href: "/manage-store", current: false },
 ];
 
-const userNavigation = [{ name: "Sign out", href: "./login" }];
+const userNavigation = [{ name: "خروج از حساب", href: "/login" }]; // Logout path to login page
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -21,10 +23,17 @@ function classNames(...classes) {
 export default function Header() {
   const authContext = useContext(AuthContext);
   const localStorageData = JSON.parse(localStorage.getItem("user"));
+
+  // If localStorageData is empty, use default or empty values
+  const userFirstName = localStorageData?.firstName || '';
+  const userLastName = localStorageData?.lastName || '';
+  const userEmail = localStorageData?.email || '';
+  const userImageUrl = localStorageData?.imageUrl || 'https://placehold.co/40x40/cccccc/000000?text=User'; // Default image
+
   return (
     <>
       <div className="min-h-full">
-        <Disclosure as="nav" className="bg-gray-800">
+        <Disclosure as="nav" className="bg-green-800">
           {({ open }) => (
             <>
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -32,14 +41,33 @@ export default function Header() {
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="flex justify-center items-center gap-2">
-                        <img
-                          className="h-8 w-8"
-                          src={require("../assets/logo.png")}
-                          alt="Inventory Management System"
-                        />
-                        <span className="font-bold text-white italic">
-                          Inventory Management
+                        {/* Iranized icon or logo */}
+                        <svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6H4V4h16v2zm0 2H4v2h16V8zm0 4H4v2h16v-2zm0 4H4v2h16v-2z"/>
+                        </svg>
+                        <span className="font-bold text-white italic text-lg">
+                          سامانه مدیریت انبار و سفارش
                         </span>
+                      </div>
+                    </div>
+                    {/* Main navigation links (desktop only) */}
+                    <div className="hidden md:block">
+                      <div className="ml-10 flex items-baseline space-x-4">
+                        {navigation.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={classNames(
+                              item.current
+                                ? "bg-gray-900 text-white"
+                                : "text-white-300 hover:bg-greens-700 hover:text-white",
+                              "rounded-md px-3 py-2 text-sm font-medium"
+                            )}
+                            aria-current={item.current ? "page" : undefined}
+                          >
+                            {item.name}
+                          </Link>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -53,15 +81,15 @@ export default function Header() {
                         <BellIcon className="h-6 w-6" aria-hidden="true" />
                       </button>
 
-                      {/* Profile dropdown */}
+                      {/* User profile menu */}
                       <Menu as="div" className="relative ml-3">
                         <div>
                           <Menu.Button className="flex max-w-xs items-center rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800">
                             <span className="sr-only">Open user menu</span>
                             <img
                               className="h-8 w-8 rounded-full"
-                              src={localStorageData.imageUrl}
-                              alt="profile"
+                              src={userImageUrl}
+                              alt="تصویر پروفایل"
                             />
                           </Menu.Button>
                         </div>
@@ -124,7 +152,6 @@ export default function Header() {
                       <Disclosure.Button
                         key={item.name}
                         as="a"
-                        // href={item.href}
                         className={classNames(
                           item.current
                             ? "bg-gray-900 text-white"
@@ -143,18 +170,16 @@ export default function Header() {
                     <div className="flex-shrink-0">
                       <img
                         className="h-10 w-10 rounded-full"
-                        src={localStorageData.imageUrl}
-                        alt="profile"
+                        src={userImageUrl}
+                        alt="تصویر پروفایل"
                       />
                     </div>
                     <div className="ml-3">
                       <div className="text-base font-medium leading-none text-white">
-                        {localStorageData.firstName +
-                          " " +
-                          localStorageData.lastName}
+                        {userFirstName + " " + userLastName}
                       </div>
                       <div className="text-sm font-medium leading-none text-gray-400">
-                        {localStorageData.email}
+                        {userEmail}
                       </div>
                     </div>
                     <button

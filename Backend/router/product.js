@@ -1,22 +1,24 @@
+// Backend/router/product.js
 const express = require("express");
-const app = express();
-const product = require("../controller/product");
+const router = express.Router(); // استفاده از express.Router() به جای app = express()
+const productController = require("../controller/product"); // کنترلر محصولات
+const authMiddleware = require('../middleware/authMiddleware'); // میان‌افزار احراز هویت
 
 // Add Product
-app.post("/add", product.addProduct);
+router.post("/add", authMiddleware.protect, productController.addProduct);
 
 // Get All Products
-app.get("/get/:userId", product.getAllProducts);
+router.get("/get/:userId", authMiddleware.protect, productController.getAllProducts);
 
 // Delete Selected Product Item
-app.get("/delete/:id", product.deleteSelectedProduct);
+// تغییر متد از GET به DELETE برای عملیات حذف
+router.delete("/delete/:id", authMiddleware.protect, productController.deleteSelectedProduct);
 
 // Update Selected Product
-app.post("/update", product.updateSelectedProduct);
+// تغییر متد از POST به PUT برای عملیات به‌روزرسانی
+router.put("/update", authMiddleware.protect, productController.updateSelectedProduct);
 
 // Search Product
-app.get("/search", product.searchProduct);
+router.get("/search", authMiddleware.protect, productController.searchProduct);
 
-// http://localhost:4000/api/product/search?searchTerm=fa
-
-module.exports = app;
+module.exports = router;

@@ -1,11 +1,13 @@
+// Backend/router/store.js
 const express = require("express");
-const app = express();
-const store = require("../controller/store");
+const router = express.Router(); // استفاده از express.Router() به جای app = express()
+const storeController = require("../controller/store"); // کنترلر فروشگاه‌ها
+const authMiddleware = require('../middleware/authMiddleware'); // میان‌افزار احراز هویت
 
-// Add Store 
-app.post("/add", store.addStore);
+// Add Store
+router.post("/add", authMiddleware.protect, storeController.addStore);
 
 // Get All Store
-app.get("/get/:userID", store.getAllStores)
+router.get("/get/:userID", authMiddleware.protect, storeController.getAllStores);
 
-module.exports = app;
+module.exports = router;

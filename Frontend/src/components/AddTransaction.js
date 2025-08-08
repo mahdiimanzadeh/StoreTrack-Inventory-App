@@ -1,49 +1,72 @@
+// src/components/AddTransaction.js
 import { Fragment, useRef, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 
-export default function AddPurchaseDetails({
-  addSaleModalSetting,
+export default function AddTransaction({
+  addTransactionModalSetting,
   products,
   handlePageUpdate,
-  authContext
+  authContext,
+  showNotification,
 }) {
-  const [purchase, setPurchase] = useState({
-    userID: authContext.user,
+  // userID را از authContext.user می‌خوانیم و در state اولیه قرار می‌دهیم
+  const [transaction, setTransaction] = useState({
+    userID: authContext.user ? authContext.user._id : "",
     productID: "",
-    quantityPurchased: "",
-    purchaseDate: "",
-    totalPurchaseAmount: "",
+    quantity: "",
+    transactionDate: new Date().toISOString().split('T')[0],
+    type: "in",
+    description: "",
   });
   const [open, setOpen] = useState(true);
   const cancelButtonRef = useRef(null);
 
-  console.log("PPu: ", purchase);
-
-  // Handling Input Change for input fields
   const handleInputChange = (key, value) => {
-    setPurchase({ ...purchase, [key]: value });
+    setTransaction({ ...transaction, [key]: value });
   };
 
-  // POST Data
-  const addSale = () => {
-    fetch("http://localhost:4000/api/purchase/add", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json",
-      },
-      body: JSON.stringify(purchase),
-    })
-      .then((result) => {
-        alert("Purchase ADDED");
+  const addTransaction = async () => {
+    if (!transaction.productID || !transaction.quantity || !transaction.transactionDate || transaction.quantity <= 0) {
+      showNotification("لطفاً تمام فیلدهای محصول، تعداد و تاریخ را پر کنید و تعداد مثبت باشد.", "error");
+      return;
+    }
+
+    // توکن و userId را مستقیماً از localStorage بخوانید
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    const userToken = storedUser ? storedUser.token : null;
+    const userId = storedUser ? storedUser._id : null; // userId را برای ارسال در body نیز نیاز داریم
+
+    if (!userToken || !userId) {
+      showNotification("برای افزودن تراکنش، لطفاً وارد شوید.", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/transactions/addManual", {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json",
+          "Authorization": `Bearer ${userToken}` // ارسال توکن
+        },
+        body: JSON.stringify({ ...transaction, userID: userId }), // اطمینان از ارسال userID صحیح
+      });
+
+      if (response.ok) {
+        showNotification("تراکنش ورود کالا با موفقیت اضافه شد!", "success");
         handlePageUpdate();
-        addSaleModalSetting();
-      })
-      .catch((err) => console.log(err));
+        addTransactionModalSetting();
+      } else {
+        const errorData = await response.json();
+        showNotification(errorData.message || "خطا در افزودن تراکنش ورود کالا. لطفاً دوباره تلاش کنید.", "error");
+      }
+    } catch (err) {
+      console.error("خطا در افزودن تراکنش ورود کالا:", err);
+      showNotification("مشکلی در اتصال به سرور پیش آمد. لطفاً دوباره تلاش کنید.", "error");
+    }
   };
 
   return (
-    // Modal
     <Transition.Root show={open} as={Fragment}>
       <Dialog
         as="div"
@@ -86,9 +109,9 @@ export default function AddPurchaseDetails({
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left ">
                       <Dialog.Title
                         as="h3"
-                        className="text-lg  py-4 font-semibold leading-6 text-gray-900 "
+                        className="text-lg  py-4 font-semibold leading-6 text-gray-900 "
                       >
-                        Purchase Details
+                        افزودن تراکنش ورود کالا
                       </Dialog.Title>
                       <form action="#">
                         <div className="grid gap-4 mb-4 sm:grid-cols-2">
@@ -97,7 +120,7 @@ export default function AddPurchaseDetails({
                               htmlFor="productID"
                               className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                             >
-                              Product Name
+                              نام محصول
                             </label>
                             <select
                               id="productID"
@@ -106,12 +129,13 @@ export default function AddPurchaseDetails({
                               onChange={(e) =>
                                 handleInputChange(e.target.name, e.target.value)
                               }
+                              required
                             >
-                              <option selected="">Select Products</option>
-                              {products.map((element, index) => {
+                              <option value="">انتخاب محصول</option>
+                              {products.map((element) => {
                                 return (
                                   <option key={element._id} value={element._id}>
-                                    {element.name}
+                                    {element.name} (موجودی: {element.stock})
                                   </option>
                                 );
                               })}
@@ -119,91 +143,63 @@ export default function AddPurchaseDetails({
                           </div>
                           <div>
                             <label
-                              htmlFor="quantityPurchased"
+                              htmlFor="quantity"
                               className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                             >
-                              Quantity Purchased
+                              تعداد وارد شده
                             </label>
                             <input
                               type="number"
-                              name="quantityPurchased"
-                              id="quantityPurchased"
-                              value={purchase.quantityPurchased}
+                              name="quantity"
+                              id="quantity"
+                              value={transaction.quantity}
                               onChange={(e) =>
                                 handleInputChange(e.target.name, e.target.value)
                               }
                               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                              placeholder="0 - 999"
+                              placeholder="مثال: 100"
+                              required
+                              min="1"
                             />
                           </div>
                           <div>
                             <label
-                              htmlFor="totalPurchaseAmount"
                               className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                              htmlFor="transactionDate"
                             >
-                              Total Purchase Amount
-                            </label>
-                            <input
-                              type="number"
-                              name="totalPurchaseAmount"
-                              id="price"
-                              value={purchase.totalPurchaseAmount}
-                              onChange={(e) =>
-                                handleInputChange(e.target.name, e.target.value)
-                              }
-                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                              placeholder="$299"
-                            />
-                          </div>
-                          <div className="h-fit w-fit">
-                            {/* <Datepicker
-                              onChange={handleChange}
-                              show={show}
-                              setShow={handleClose}
-                            /> */}
-                            <label
-                              className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                              htmlFor="purchaseDate"
-                            >
-                              Purchase Date
+                              تاریخ تراکنش
                             </label>
                             <input
                               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                               type="date"
-                              id="purchaseDate"
-                              name="purchaseDate"
-                              value={purchase.purchaseDate}
+                              id="transactionDate"
+                              name="transactionDate"
+                              value={transaction.transactionDate}
                               onChange={(e) =>
                                 handleInputChange(e.target.name, e.target.value)
                               }
+                              required
                             />
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          {/* <button
-                            type="submit"
-                            className="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                          >
-                            Update product
-                          </button> */}
-                          {/* <button
-                            type="button"
-                            className="text-red-600 inline-flex items-center hover:text-white border border-red-600 hover:bg-red-600 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:border-red-500 dark:text-red-500 dark:hover:text-white dark:hover:bg-red-600 dark:focus:ring-red-900"
-                          >
-                            <svg
-                              className="mr-1 -ml-1 w-5 h-5"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                              xmlns="http://www.w3.org/2000/svg"
+                          <div className="sm:col-span-2">
+                            <label
+                              htmlFor="description"
+                              className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                             >
-                              <path
-                                fill-rule="evenodd"
-                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                clip-rule="evenodd"
-                              ></path>
-                            </svg>
-                            Delete
-                          </button> */}
+                              توضیحات (اختیاری)
+                            </label>
+                            <textarea
+                              id="description"
+                              rows="3"
+                              name="description"
+                              className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              placeholder="توضیحات مربوط به ورود کالا..."
+                              value={transaction.description}
+                              onChange={(e) =>
+                                handleInputChange(e.target.name, e.target.value)
+                              }
+                            ></textarea>
+                          </div>
                         </div>
                       </form>
                     </div>
@@ -213,17 +209,17 @@ export default function AddPurchaseDetails({
                   <button
                     type="button"
                     className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto"
-                    onClick={addSale}
+                    onClick={addTransaction}
                   >
-                    Add
+                    افزودن تراکنش
                   </button>
                   <button
                     type="button"
                     className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                    onClick={() => addSaleModalSetting()}
+                    onClick={() => addTransactionModalSetting()}
                     ref={cancelButtonRef}
                   >
-                    Cancel
+                    لغو
                   </button>
                 </div>
               </Dialog.Panel>

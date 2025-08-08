@@ -1,0 +1,48 @@
+# docker-compose.yml
+
+services:
+  # سرویس MongoDB
+  mongodb:
+    image: mongo:latest # از آخرین ایمیج MongoDB استفاده می‌کنیم
+    container_name: mongodb_container
+    ports:
+      - "27017:27017" # پورت MongoDB را به هاست مپ می‌کنیم
+    volumes:
+      - mongo_data:/data/db # برای پایدارسازی داده‌ها
+    restart: always # همیشه کانتینر را ری‌استارت کن
+
+  # سرویس بک‌اند (Node.js)
+  backend:
+    build: ./Backend # داکر را از Dockerfile در پوشه Backend می‌سازد
+    container_name: backend_container
+    ports:
+      - "5000:5000" # پورت بک‌اند را مپ می‌کنیم
+    environment: # متغیرهای محیطی را از فایل .env در پوشه Backend بارگذاری می‌کند
+      MONGO_URI: mongodb://mongodb:27017/inventory_db # <<-- مهم: نام هاست را به 'mongodb' تغییر دهید
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET} # از متغیر محیطی سیستم شما یا فایل .env اصلی استفاده می‌کند
+    depends_on: # بک‌اند به MongoDB وابسته است
+      - mongodb
+    restart: always # همیشه کانتینر را ری‌استارت کن
+    volumes:
+      - ./Backend:/app # برای Hot Reloading در توسعه (اختیاری)
+      - /app/node_modules # نادیده گرفتن node_modules از volume mapping
+
+  # سرویس فرانت‌اند (React)
+  frontend:
+    build: ./Frontend # داکر را از Dockerfile در پوشه Frontend می‌سازد
+    container_name: frontend_container
+    ports:
+      - "3000:80" # پورت 3000 هاست را به پورت 80 کانتینر Nginx مپ می‌کنیم
+    depends_on: # فرانت‌اند به بک‌اند وابسته است
+      - backend
+    restart: always # همیشه کانتینر را ری‌استارت کن
+    # در محیط Production نیازی به volume mapping برای فرانت‌اند نیست
+    # اگر برای توسعه Hot Reloading نیاز دارید، می‌توانید این خطوط را اضافه کنید:
+    # volumes:
+    #   - ./Frontend:/app
+    #   - /app/node_modules
+
+# Volumes برای پایدارسازی داده‌های MongoDB
+volumes:
+  mongo_data:

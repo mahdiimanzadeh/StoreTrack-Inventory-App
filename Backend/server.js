@@ -1,91 +1,82 @@
+// Backend/server.js
 const express = require("express");
-const { main } = require("./models/index");
-const productRoute = require("./router/product");
-const storeRoute = require("./router/store");
-const purchaseRoute = require("./router/purchase");
-const salesRoute = require("./router/sales");
-const cors = require("cors");
-const User = require("./models/users");
-const Product = require("./models/Product");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv"); // Import dotenv for environment variables
+const cors = require("cors"); // Import cors middleware
+const jwt = require("jsonwebtoken"); // For JWT operations in auth (though authController handles most)
+const bcrypt = require("bcryptjs"); // For password hashing in auth (if not already in authController)
+const alertController = require('./controller/alert'); // ایمپورت کنترلر alert
 
+// Load environment variables from .env file
+dotenv.config();
+
+// Import database connection function (main from models/index.js)
+const { main: connectDB } = require("./models/index"); // Renamed 'main' to 'connectDB' for clarity
+
+// شروع زمان‌بندی بررسی موجودی پایین
+alertController.scheduleLowStockCheck(); // <<--- این خط را اضافه کنید
+console.log('Low stock check scheduled.');
+
+// Import models (ensure they are loaded by Mongoose)
+require("./models/users");
+require("./models/product");
+require("./models/order"); // New Order model
+require("./models/transaction"); // New Transaction model
+require("./models/store");
+
+// Import controllers
+const authController = require("./controller/authController"); // Assuming you have an authController
+// The other controllers (product, purchase, sales, store) are imported via their routes
+
+// Import routes
+const authRoutes = require("./router/authRoutes"); // New auth routes
+const productRoutes = require("./router/product"); // Existing product routes
+const orderRoutes = require("./router/orderRoutes"); // New order routes
+const transactionRoutes = require("./router/transactionRoutes"); // New transaction routes
+const storeRoutes = require("./router/store"); // Existing store routes
+const reportRoutes = require("./router/reportRoutes"); // New report routes
 
 const app = express();
-const PORT = 4000;
-main();
-app.use(express.json());
-app.use(cors());
+const PORT = process.env.PORT || 5000; // Use PORT from .env or default to 5000
+
+// Connect to MongoDB
+connectDB(); // Call the database connection function
+
+// Middleware
+app.use(express.json()); // For parsing application/json bodies
+app.use(cors()); // Enable CORS for all origins (for development)
+
+// --- API Routes ---
+// Authentication API (Register/Login)
+app.use("/api/auth", authRoutes); // Use the dedicated authRoutes
 
 // Store API
-app.use("/api/store", storeRoute);
+app.use("/api/store", storeRoutes);
 
 // Products API
-app.use("/api/product", productRoute);
+app.use("/api/product", productRoutes);
 
-// Purchase API
-app.use("/api/purchase", purchaseRoute);
+// Orders API
+app.use("/api/orders", orderRoutes); // Use the new order routes
 
-// Sales API
-app.use("/api/sales", salesRoute);
+// Transactions API
+app.use("/api/transactions", transactionRoutes); // Use the new transaction routes
 
-// ------------- Signin --------------
-let userAuthCheck;
-app.post("/api/login", async (req, res) => {
-  console.log(req.body);
-  // res.send("hi");
-  try {
-    const user = await User.findOne({
-      email: req.body.email,
-      password: req.body.password,
-    });
-    console.log("USER: ", user);
-    if (user) {
-      res.send(user);
-      userAuthCheck = user;
-    } else {
-      res.status(401).send("Invalid Credentials");
-      userAuthCheck = null;
-    }
-  } catch (error) {
-    console.log(error);
-    res.send(error);
-  }
+// Reports API
+app.use("/api/reports", reportRoutes); // Use the new report routes
+
+// --- Removed old direct login/register logic and test routes ---
+// The login and register logic is now handled by authController and authRoutes
+// The /api/login GET and /testget routes are removed as they are no longer needed
+// after implementing proper authentication flow via authController.
+
+// Basic Test Route
+app.get("/", (req, res) => {
+  res.send("Inventory Management API is running!");
 });
-
-// Getting User Details of login user
-app.get("/api/login", (req, res) => {
-  res.send(userAuthCheck);
-});
-// ------------------------------------
-
-// Registration API
-app.post("/api/register", (req, res) => {
-  let registerUser = new User({
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
-    email: req.body.email,
-    password: req.body.password,
-    phoneNumber: req.body.phoneNumber,
-    imageUrl: req.body.imageUrl,
-  });
-
-  registerUser
-    .save()
-    .then((result) => {
-      res.status(200).send(result);
-      alert("Signup Successfull");
-    })
-    .catch((err) => console.log("Signup: ", err));
-  console.log("request: ", req.body);
-});
-
-
-app.get("/testget", async (req,res)=>{
-  const result = await Product.findOne({ _id: '6429979b2e5434138eda1564'})
-  res.json(result)
-
-})
 
 // Here we are listening to the server
 app.listen(PORT, () => {
-  console.log("I am live again");
+  console.log(`Server is live on port ${PORT}`);
 });
+
